@@ -2,8 +2,8 @@ import tkinter as tk
 from tkinter import messagebox
 import os
 import json
-import shutil
-from datetime import datetime, timedelta
+from datetime import datetime
+import re
 
 # Define the directory to store quests, named with the current date
 def get_quest_dir():
@@ -16,7 +16,13 @@ QUESTS_DIR = get_quest_dir()
 
 # Helper function to clean filenames
 def clean_filename(filename):
-    return filename.replace(" ", "_").replace("'", "").replace('"', "").replace("/", "_")
+    # Remove quotes
+    filename = filename.replace('"', "").replace("'", "")
+    # Replace spaces and equal signs with a single underscore
+    filename = re.sub(r"[ =]+", "_", filename)
+    # Remove any double or triple underscores
+    filename = re.sub(r"_+", "_", filename)
+    return filename
 
 # Task List
 tasks = []
@@ -70,11 +76,6 @@ def load_quests():
                         if task_data['status'] != "Quest completed":
                             tasks.append(task_data)
                             task_id_counter = max(task_id_counter, task_data['id'] + 1)
-                            # Copy the quest's .txt log file forward if it exists
-                            old_log_file = os.path.join(latest_dir, f"{clean_filename(task_data['name'])}.txt")
-                            new_log_file = os.path.join(QUESTS_DIR, f"{clean_filename(task_data['name'])}.txt")
-                            if os.path.exists(old_log_file):
-                                shutil.copy2(old_log_file, new_log_file)
             save_quests()
 
     update_task_list()
@@ -172,7 +173,28 @@ text_log.pack(pady=5)
 button_update_log = tk.Button(root, text="Update Quest Log", command=update_log)
 button_update_log.pack(pady=5)
 
+# Load quests when app starts
 load_quests()
+
+# Optional: Clean existing bad filenames
+def clean_existing_files():
+    quests_root = "quests"
+
+    for root_dir, dirs, files in os.walk(quests_root):
+        for filename in files:
+            clean_name = clean_filename(filename)
+            if clean_name != filename:
+                src = os.path.join(root_dir, filename)
+                dst = os.path.join(root_dir, clean_name)
+                if not os.path.exists(dst):  # avoid overwriting
+                    os.rename(src, dst)
+                    print(f"Renamed: {filename} -> {clean_name}")
+                else:
+                    print(f"Skipping rename (target exists): {filename}")
+
+# Uncomment this line to clean your old files:
+# clean_existing_files()
+
 root.mainloop()
 
-#v 1.4 was written with ChatGPT
+#v 1.5 was written with ChatGPT
