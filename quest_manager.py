@@ -4,6 +4,7 @@ import os
 import json
 from datetime import datetime
 import re
+import shutil  # Added to help copy log files
 
 # Define the directory to store quests, named with the current date
 def get_quest_dir():
@@ -71,9 +72,19 @@ def load_quests():
         if latest_dir:
             for filename in os.listdir(latest_dir):
                 if filename.endswith(".json"):
-                    with open(os.path.join(latest_dir, filename), "r") as f:
+                    json_path = os.path.join(latest_dir, filename)
+                    with open(json_path, "r") as f:
                         task_data = json.load(f)
                         if task_data['status'] != "Quest completed":
+                            base_name = os.path.splitext(filename)[0]
+                            old_log_path = os.path.join(latest_dir, f"{base_name}.txt")
+                            if os.path.exists(old_log_path):
+                                with open(old_log_path, "r") as log_f:
+                                    task_data["log"] = log_f.read()
+                                # Also write the copied log to the new day's folder
+                                new_log_path = os.path.join(QUESTS_DIR, f"{base_name}.txt")
+                                with open(new_log_path, "w") as new_log_f:
+                                    new_log_f.write(task_data["log"])
                             tasks.append(task_data)
                             task_id_counter = max(task_id_counter, task_data['id'] + 1)
             save_quests()
@@ -197,4 +208,5 @@ def clean_existing_files():
 
 root.mainloop()
 
-#v 1.5 was written with ChatGPT
+
+#v 1.6 was written with ChatGPT
